@@ -8,6 +8,17 @@ const App = <div id="1">
     <li>1</li>
     <li>2</li>
   </ul>
+  <div>
+    <div>
+      <div>
+        <div>1</div>
+        <div>
+          <div>2</div>
+        </div>
+      </div>
+    </div>
+  </div>
 </div>
+
 
 React.createRoot(document.getElementById('root'))?.render(App)
