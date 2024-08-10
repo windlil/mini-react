@@ -4,11 +4,11 @@ const enum NODE_TYPE {
 
 let nextWorkOfUnit: any = null
 
+
 export const commitWork = (fiber: any) => {
   if (!fiber) return
   const parent = getParent(fiber)
-  console.log(parent)
-  parent.dom.append(fiber.dom)
+  parent.dom.append(fiber.dom ?? '')
 
   commitWork(fiber.child)
   commitWork(fiber.sibling)
@@ -51,7 +51,7 @@ export const render = (el: any, container: Element | Text) => {
 let root: any  = null
 
 const createDom = (fiber: any) => {
-  return fiber.type === NODE_TYPE["TEXT_NODE"] ? document.createTextNode(fiber?.props?.children) : document.createElement(fiber.type)
+  return fiber.type === NODE_TYPE["TEXT_NODE"] ? document.createTextNode(fiber.props) : document.createElement(fiber.type)
 }
 
 const updateProps = (dom: any, props: any) => {
@@ -73,29 +73,27 @@ export const getParent = (fiber: any) => {
   return parent
 }
 
-export const initChildren = (fiber: any, children: any[], isFunctionComponent: boolean) => {
+export const initChildren = (fiber: any, children: any[]) => {
   if (fiber.type === NODE_TYPE["TEXT_NODE"]) return
 
   let prevChild: any = null
 
-  const childrenIsString = typeof fiber?.props?.children === 'string'
-
   children.forEach((child: any, index: number) => {
-
-    const network = {
+    const childIsString = typeof child !== 'object'
+    const netFiber = {
       type: child?.type ?? NODE_TYPE["TEXT_NODE"],
-      props: childrenIsString ? fiber?.props: child?.props,
+      props: childIsString ? child : child.props,
       child: null,
       dom: null,
       parent: fiber,
       sibling: null,
     }
     if (index === 0) {
-      fiber.child = network
+      fiber.child = netFiber
     } else {
-      prevChild.sibling = network
+      prevChild.sibling = netFiber
     }
-    prevChild = network
+    prevChild = netFiber
   })
 }
 
@@ -114,9 +112,9 @@ const performWorkOfUnit = (fiber: any) => {
     updateProps(dom, props)
   }
   // 将树结构转换为链表
-  const children = isFunctionComponent ? [fiber.type()] : (Array.isArray(fiber.props.children) ? fiber.props.children : [fiber.props.children])
+  const children = isFunctionComponent ? [fiber.type(fiber?.props)] : (Array.isArray(fiber?.props?.children) ? fiber?.props?.children : [fiber?.props?.children])
 
-  initChildren(fiber, children, isFunctionComponent)
+  initChildren(fiber, children)
   
 
   if (fiber?.child) {

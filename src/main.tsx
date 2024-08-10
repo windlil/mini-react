@@ -1,24 +1,27 @@
-import './App'
 import React from './core'
 
-function Child() {
+
+const Counter = ({count}: any) => {
   return (
-    <div>Child</div>
+    <div>
+      count: {count}
+    </div>
   )
 }
 
-const App = <div>
-  <div>123</div>
-  <div>
-    123
-  </div>
-  <ul>
-    <li>123</li>
-    <li>12</li>
-  </ul>
-  <h1>1</h1>
-  <Child />
-</div>
+const App = () => {
+  return (
+    <div>
+      <h1>h1</h1>
+      <ul>
+        <li>1</li>
+        <li>2</li>
+      </ul>
+      <Counter count={10} />
+      <Counter count={20} />
+    </div>
+  )
+}
 
 
-React.createRoot(document.getElementById('root'))?.render(App)
+React.createRoot(document.getElementById('root'))?.render(<App />)
