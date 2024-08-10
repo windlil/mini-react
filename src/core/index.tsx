@@ -3,12 +3,33 @@ const enum NODE_TYPE {
 }
 
 let nextWorkOfUnit: any = null
+
+export const commitWork = (fiber: any) => {
+  if (!fiber) return
+  const parent = getParent(fiber)
+  console.log(parent)
+  parent.dom.append(fiber.dom)
+
+  commitWork(fiber.child)
+  commitWork(fiber.sibling)
+}
+
+export const commitRoot = (fiber: any) => {
+  commitWork(fiber)
+
+  root = null
+}
+
 export const workLoop = (deadline: IdleDeadline) => {
   let shouldYield = false
   while (!shouldYield && nextWorkOfUnit) {
     nextWorkOfUnit = performWorkOfUnit(nextWorkOfUnit)
 
     shouldYield = deadline.timeRemaining() < 1
+  }
+
+  if (!nextWorkOfUnit && root) {
+    commitRoot(root.child)
   }
 
   requestIdleCallback(workLoop)
@@ -23,10 +44,14 @@ export const render = (el: any, container: Element | Text) => {
       children: [el]
     }
   }
+
+  root = nextWorkOfUnit
 }
 
-const createDom = (work: any) => {
-  return work.type === NODE_TYPE["TEXT_NODE"] ? document.createTextNode(work?.props?.children) : document.createElement(work.type)
+let root: any  = null
+
+const createDom = (fiber: any) => {
+  return fiber.type === NODE_TYPE["TEXT_NODE"] ? document.createTextNode(fiber?.props?.children) : document.createElement(fiber.type)
 }
 
 const updateProps = (dom: any, props: any) => {
@@ -38,25 +63,35 @@ const updateProps = (dom: any, props: any) => {
   })
 }
 
-export const initChildren = (work: any) => {
-  if (work.type === NODE_TYPE["TEXT_NODE"]) return
+export const getParent = (fiber: any) => {
+  let parent = fiber?.parent
 
-  const children = Array.isArray(work?.props?.children) ? work?.props?.children : [work?.props?.children]
+  while (!parent?.dom) {
+    parent = parent?.parent
+  }
+
+  return parent
+}
+
+export const initChildren = (fiber: any, children: any[], isFunctionComponent: boolean) => {
+  if (fiber.type === NODE_TYPE["TEXT_NODE"]) return
+
   let prevChild: any = null
 
-  const childrenIsString = typeof work?.props?.children === 'string'
+  const childrenIsString = typeof fiber?.props?.children === 'string'
 
   children.forEach((child: any, index: number) => {
+
     const network = {
       type: child?.type ?? NODE_TYPE["TEXT_NODE"],
-      props: childrenIsString ? work.props: child.props,
+      props: childrenIsString ? fiber?.props: child?.props,
       child: null,
       dom: null,
-      parent: work,
-      sibling: null
+      parent: fiber,
+      sibling: null,
     }
     if (index === 0) {
-      work.child = network
+      fiber.child = network
     } else {
       prevChild.sibling = network
     }
@@ -64,29 +99,36 @@ export const initChildren = (work: any) => {
   })
 }
 
-const performWorkOfUnit = (work: any) => {
-  if (!work.dom) {
+export const isFunction = (value: unknown) => typeof value === 'function'
+
+const performWorkOfUnit = (fiber: any) => {
+  const isFunctionComponent = isFunction(fiber?.type)
+
+  if (!fiber.dom && !isFunctionComponent) {
     // 创建真实DOM并挂载
-    const dom: any = (work.dom = createDom(work))
-    work.parent.dom.appendChild(dom)
+    const dom: any = (fiber.dom = createDom(fiber))
+    // fiber.parent.dom.appendChild(dom)
 
     // 处理props
-    const props = work.props
+    const props = fiber.props
     updateProps(dom, props)
   }
-
   // 将树结构转换为链表
-  initChildren(work)
-  if (work?.child) {
-    return work.child
-  } else if (work?.sibling) {
-    return work.sibling
+  const children = isFunctionComponent ? [fiber.type()] : (Array.isArray(fiber.props.children) ? fiber.props.children : [fiber.props.children])
+
+  initChildren(fiber, children, isFunctionComponent)
+  
+
+  if (fiber?.child) {
+    return fiber.child
+  } else if (fiber?.sibling) {
+    return fiber.sibling
   }
-  return getParentSibling(work)
+  return getParentSibling(fiber)
 }
 
-const getParentSibling = (work: any) => {
-  let current = work.parent
+const getParentSibling = (fiber: any) => {
+  let current = fiber.parent
   while (current) {
     const sibling = current?.sibling
     if (sibling) {
