@@ -1,10 +1,17 @@
-import React from './core'
+import React, { update } from './core'
 
+let count = 1
+const Counter = () => {
+  const handleClick = () => {
+    count++
+    console.log(count)
+    update()
+  }
 
-const Counter = ({count}: any) => {
   return (
     <div>
       count: {count}
+      <button onClick={handleClick}>click</button>
     </div>
   )
 }
@@ -17,8 +24,7 @@ const App = () => {
         <li>1</li>
         <li>2</li>
       </ul>
-      <Counter count={10} />
-      <Counter count={20} />
+      <Counter/>
     </div>
   )
 }

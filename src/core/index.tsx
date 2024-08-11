@@ -8,7 +8,11 @@ let nextWorkOfUnit: any = null
 export const commitWork = (fiber: any) => {
   if (!fiber) return
   const parent = getParent(fiber)
-  parent.dom.append(fiber.dom ?? '')
+  if (fiber?.effectTag === 'update') {
+    updateProps(fiber.dom, fiber.props, fiber?.alternate?.props)
+  } else {
+    parent.dom.append(fiber.dom ?? '')
+  }
 
   commitWork(fiber.child)
   commitWork(fiber.sibling)
@@ -16,6 +20,7 @@ export const commitWork = (fiber: any) => {
 
 export const commitRoot = (fiber: any) => {
   commitWork(fiber)
+  currentFiber = root
 
   root = null
 }
@@ -48,17 +53,50 @@ export const render = (el: any, container: Element | Text) => {
   root = nextWorkOfUnit
 }
 
+export const update = () => {
+  nextWorkOfUnit = {
+    dom: currentFiber.dom,
+    props: currentFiber.props,
+    alternate: currentFiber
+  }
+
+  root = nextWorkOfUnit
+
+}
+
+let currentFiber: any = null
 let root: any  = null
 
 const createDom = (fiber: any) => {
-  return fiber.type === NODE_TYPE["TEXT_NODE"] ? document.createTextNode(fiber.props) : document.createElement(fiber.type)
+  return fiber.type === NODE_TYPE["TEXT_NODE"] ? document.createTextNode(fiber.props.nodeValue ?? '') : document.createElement(fiber.type)
 }
 
-const updateProps = (dom: any, props: any) => {
-  if (!props) return
-  Object.keys(props).forEach((key) => {
+const updateProps = (dom: any, netxProps: any, prevProps: any) => {
+  Object.keys(prevProps).forEach((key: any) => {
     if (key !== 'children') {
-      dom[key] = props[key]
+      if (!(key in netxProps)) {
+        (dom as HTMLElement).removeAttribute(key)
+      }
+    }
+  })
+
+  Object.keys(netxProps).forEach((key) => {
+    if (key !== 'children') {
+      if (netxProps[key] !== prevProps[key]) {
+        console.log(netxProps[key], prevProps[key])
+        if (key.startsWith('on')) {
+          const eventName = key.slice(2).toLocaleLowerCase()
+          dom.removeEventListener(eventName, prevProps[key])
+          dom.addEventListener(eventName, netxProps[key])
+        } else {
+          if (key === 'nodeValue') {
+            dom.textContent = netxProps[key]
+            return
+          } else {
+            dom[key] = netxProps[key]    
+          }
+        }
+      }
     }
   })
 }
@@ -74,26 +112,63 @@ export const getParent = (fiber: any) => {
 }
 
 export const initChildren = (fiber: any, children: any[]) => {
-  if (fiber.type === NODE_TYPE["TEXT_NODE"]) return
+  let oldFiber = fiber?.alternate?.child
 
   let prevChild: any = null
 
   children.forEach((child: any, index: number) => {
     const childIsString = typeof child !== 'object'
-    const netFiber = {
-      type: child?.type ?? NODE_TYPE["TEXT_NODE"],
-      props: childIsString ? child : child.props,
-      child: null,
-      dom: null,
-      parent: fiber,
-      sibling: null,
+    // if (childIsString) {
+    //   child.props = {
+
+    //   }
+    // }
+    let isSameType = oldFiber && oldFiber?.type === child?.type
+    let newFiber: any
+
+    if (childIsString && oldFiber) {
+      isSameType = oldFiber.type === NODE_TYPE['TEXT_NODE'] && (typeof child === 'string' || typeof child === 'number')
     }
-    if (index === 0) {
-      fiber.child = netFiber
+
+
+    if (isSameType) {
+      newFiber = {
+        type: child?.type ?? NODE_TYPE["TEXT_NODE"],
+        props: childIsString ? {
+          nodeValue: child,
+          children: []
+        } : child.props,
+        child: null,
+        dom: oldFiber.dom,
+        parent: fiber,
+        sibling: null,
+        alternate: oldFiber,
+        effectTag: 'update'
+      }
     } else {
-      prevChild.sibling = netFiber
+      newFiber = {
+        type: child?.type ?? NODE_TYPE["TEXT_NODE"],
+        props: childIsString ? {
+          nodeValue: child,
+          children: []
+        } : child.props,
+        child: null,
+        dom: null,
+        parent: fiber,
+        sibling: null,
+      }
     }
-    prevChild = netFiber
+
+    if (oldFiber) {
+      oldFiber = oldFiber.sibling
+    }
+
+    if (index === 0) {
+      fiber.child = newFiber
+    } else {
+      prevChild.sibling = newFiber
+    }
+    prevChild = newFiber
   })
 }
 
@@ -109,7 +184,7 @@ const performWorkOfUnit = (fiber: any) => {
 
     // 处理props
     const props = fiber.props
-    updateProps(dom, props)
+    updateProps(dom, props, {})
   }
   // 将树结构转换为链表
   const children = isFunctionComponent ? [fiber.type(fiber?.props)] : (Array.isArray(fiber?.props?.children) ? fiber?.props?.children : [fiber?.props?.children])
