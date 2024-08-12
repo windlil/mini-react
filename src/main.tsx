@@ -1,33 +1,28 @@
-import React, { update } from './core'
+import React from "./core/index"
 
-let count = 1
-const Counter = () => {
-  const handleClick = () => {
-    count++
-    console.log(count)
-    update()
+let showBar = false
+function Counter() {
+  const bar = <div>bar</div>
+  function handleShowBar() {
+    showBar = !showBar
+    React.update()
   }
-
   return (
     <div>
-      count: {count}
-      <button onClick={handleClick}>click</button>
+      counter
+      <div>{showBar && bar}</div>
+      <button onClick={handleShowBar}>showBar</button>
     </div>
   )
 }
 
-const App = () => {
+function App() {
   return (
     <div>
-      <h1>h1</h1>
-      <ul>
-        <li>1</li>
-        <li>2</li>
-      </ul>
-      <Counter/>
+      mini-react
+      <Counter></Counter>
     </div>
   )
 }
 
-
-React.createRoot(document.getElementById('root'))?.render(<App />)
+React.createRoot(document.querySelector('#root'))?.render(<App />)

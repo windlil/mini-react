@@ -3,6 +3,7 @@ const enum NODE_TYPE {
 }
 
 let nextWorkOfUnit: any = null
+let delects: any[] = []
 
 export const createElement = (type: any, props: any, ...children: any) => {
   return {
@@ -28,6 +29,18 @@ export const createTextNode = (text: string | number, ...children: any) => {
   }
 }
 
+function commitDeletion(fiber: any) {
+  if (fiber.dom) {
+    let fiberParent = fiber.parent;
+    while (!fiberParent.dom) {
+      fiberParent = fiberParent.parent;
+    }
+    fiberParent.dom.removeChild(fiber.dom);
+  } else {
+    commitDeletion(fiber.child);
+  }
+}
+
 export const commitWork = (fiber: any) => {
   if (!fiber) return
   const parent = getParent(fiber)
@@ -42,9 +55,10 @@ export const commitWork = (fiber: any) => {
 }
 
 export const commitRoot = (fiber: any) => {
+  delects.forEach(commitDeletion)
   commitWork(fiber)
   currentFiber = root
-
+  delects = []
   root = null
 }
 
@@ -84,7 +98,6 @@ export const update = () => {
   }
 
   root = nextWorkOfUnit
-
 }
 
 let currentFiber: any = null
@@ -143,7 +156,6 @@ export const initChildren = (fiber: any, children: any[]) => {
     const isSameType = oldFiber && oldFiber?.type === child?.type
     let newFiber: any
 
-
     if (isSameType) {
       newFiber = {
         type: child?.type,
@@ -156,13 +168,18 @@ export const initChildren = (fiber: any, children: any[]) => {
         effectTag: 'update'
       }
     } else {
-      newFiber = {
-        type: child?.type,
-        props: child.props,
-        child: null,
-        dom: null,
-        parent: fiber,
-        sibling: null,
+      if (child) {
+        newFiber = {
+          type: child?.type,
+          props: child.props,
+          child: null,
+          dom: null,
+          parent: fiber,
+          sibling: null,
+        }
+      }
+      if (oldFiber) {
+        delects.push(oldFiber)
       }
     }
 
@@ -177,6 +194,12 @@ export const initChildren = (fiber: any, children: any[]) => {
     }
     prevChild = newFiber
   })
+
+  while(oldFiber) {
+    console.log(oldFiber)
+    delects.push(oldFiber)
+    oldFiber = oldFiber.sibling
+  }
 }
 
 export const isFunction = (value: unknown) => typeof value === 'function'
@@ -230,7 +253,8 @@ const React =  {
     }
   },
   createElement,
-  createTextNode
+  createTextNode,
+  update
 }
 
 export default React
