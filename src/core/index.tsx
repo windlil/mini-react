@@ -4,6 +4,29 @@ const enum NODE_TYPE {
 
 let nextWorkOfUnit: any = null
 
+export const createElement = (type: any, props: any, ...children: any) => {
+  return {
+    type,
+    props: {
+      ...props,
+      children: children.map((child: any) => {
+        const isTextNode =
+        typeof child === "string" || typeof child === "number";
+        return isTextNode ? createTextNode(child) : child;
+      })
+    }
+  }
+}
+
+export const createTextNode = (text: string | number, ...children: any) => {
+  return {
+    type: "TEXT_NODE",
+    props: {
+      nodeValue: text,
+      children,
+    },
+  }
+}
 
 export const commitWork = (fiber: any) => {
   if (!fiber) return
@@ -68,7 +91,7 @@ let currentFiber: any = null
 let root: any  = null
 
 const createDom = (fiber: any) => {
-  return fiber.type === NODE_TYPE["TEXT_NODE"] ? document.createTextNode(fiber.props.nodeValue ?? '') : document.createElement(fiber.type)
+  return fiber.type === NODE_TYPE["TEXT_NODE"] ? document.createTextNode('') : document.createElement(fiber.type)
 }
 
 const updateProps = (dom: any, netxProps: any, prevProps: any) => {
@@ -83,7 +106,6 @@ const updateProps = (dom: any, netxProps: any, prevProps: any) => {
   Object.keys(netxProps).forEach((key) => {
     if (key !== 'children') {
       if (netxProps[key] !== prevProps[key]) {
-        console.log(netxProps[key], prevProps[key])
         if (key.startsWith('on')) {
           const eventName = key.slice(2).toLocaleLowerCase()
           dom.removeEventListener(eventName, prevProps[key])
@@ -117,27 +139,15 @@ export const initChildren = (fiber: any, children: any[]) => {
   let prevChild: any = null
 
   children.forEach((child: any, index: number) => {
-    const childIsString = typeof child !== 'object'
-    // if (childIsString) {
-    //   child.props = {
 
-    //   }
-    // }
-    let isSameType = oldFiber && oldFiber?.type === child?.type
+    const isSameType = oldFiber && oldFiber?.type === child?.type
     let newFiber: any
-
-    if (childIsString && oldFiber) {
-      isSameType = oldFiber.type === NODE_TYPE['TEXT_NODE'] && (typeof child === 'string' || typeof child === 'number')
-    }
 
 
     if (isSameType) {
       newFiber = {
-        type: child?.type ?? NODE_TYPE["TEXT_NODE"],
-        props: childIsString ? {
-          nodeValue: child,
-          children: []
-        } : child.props,
+        type: child?.type,
+        props: child.props,
         child: null,
         dom: oldFiber.dom,
         parent: fiber,
@@ -147,11 +157,8 @@ export const initChildren = (fiber: any, children: any[]) => {
       }
     } else {
       newFiber = {
-        type: child?.type ?? NODE_TYPE["TEXT_NODE"],
-        props: childIsString ? {
-          nodeValue: child,
-          children: []
-        } : child.props,
+        type: child?.type,
+        props: child.props,
         child: null,
         dom: null,
         parent: fiber,
@@ -187,7 +194,7 @@ const performWorkOfUnit = (fiber: any) => {
     updateProps(dom, props, {})
   }
   // 将树结构转换为链表
-  const children = isFunctionComponent ? [fiber.type(fiber?.props)] : (Array.isArray(fiber?.props?.children) ? fiber?.props?.children : [fiber?.props?.children])
+  const children = isFunctionComponent ? [fiber.type(fiber?.props)] : fiber?.props?.children
 
   initChildren(fiber, children)
   
@@ -221,7 +228,9 @@ const React =  {
         render(app, container)
       }
     }
-  }
+  },
+  createElement,
+  createTextNode
 }
 
 export default React
