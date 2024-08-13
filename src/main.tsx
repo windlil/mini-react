@@ -1,11 +1,14 @@
 import React from "./core/index"
 
+const update = React.update()
+
+
 let showBar = false
 function Counter() {
   const bar = <div>bar</div>
   function handleShowBar() {
     showBar = !showBar
-    React.update()
+    update()
   }
   return (
     <div>
@@ -26,3 +29,4 @@ function App() {
 }
 
 React.createRoot(document.querySelector('#root'))?.render(<App />)
+

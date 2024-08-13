@@ -54,9 +54,9 @@ export const commitWork = (fiber: any) => {
   commitWork(fiber.sibling)
 }
 
-export const commitRoot = (fiber: any) => {
+export const commitRoot = () => {
   delects.forEach(commitDeletion)
-  commitWork(fiber)
+  commitWork(root.child)
   currentFiber = root
   delects = []
   root = null
@@ -67,11 +67,15 @@ export const workLoop = (deadline: IdleDeadline) => {
   while (!shouldYield && nextWorkOfUnit) {
     nextWorkOfUnit = performWorkOfUnit(nextWorkOfUnit)
 
+    if (root?.sibling?.type === nextWorkOfUnit?.type) {
+      nextWorkOfUnit = undefined
+    }
+
     shouldYield = deadline.timeRemaining() < 1
   }
 
   if (!nextWorkOfUnit && root) {
-    commitRoot(root.child)
+    commitRoot()
   }
 
   requestIdleCallback(workLoop)
@@ -86,18 +90,18 @@ export const render = (el: any, container: Element | Text) => {
       children: [el]
     }
   }
-
   root = nextWorkOfUnit
 }
 
 export const update = () => {
-  nextWorkOfUnit = {
-    dom: currentFiber.dom,
-    props: currentFiber.props,
-    alternate: currentFiber
-  }
+  return () => {
+    root = {
+      ...currentFiber,
+      alternate: currentFiber,
+    }
 
-  root = nextWorkOfUnit
+    nextWorkOfUnit = root
+  }
 }
 
 let currentFiber: any = null
